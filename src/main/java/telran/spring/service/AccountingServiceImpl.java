@@ -22,7 +22,7 @@ InMemoryUserDetailsManager manager;
 PasswordEncoder encoder;
 @Value("${app.filename.file:newFile}")
 String fileName;
-@Value("${app.username.admin:admin@gmail.com}")
+@Value("${app.username.admin:admin}")
 String admin;
 static Logger LOG = LoggerFactory.getLogger(AccountingController.class);
 
@@ -57,15 +57,16 @@ public AccountingServiceImpl(HashMap<String, Account> accounts, InMemoryUserDeta
 	
 	@Override
 	public Boolean addAccount(Account account) {
-		if(!account.username.equals(admin)) {
+		//if(!account.username.equals(admin)) {
+			account.password = encoder.encode(account.password);
 			if(accounts.putIfAbsent(account.username, account) == null) {
 				manager.createUser(User.withUsername(account.username)
-						.password(encoder.encode(account.password)).roles(account.role).build());
+						.password(account.password).roles(account.role).build());
 				LOG.debug("account was created with user name: {}, password: {}, role: {}", 
 						account.username, account.password, account.role);
 				return true;
 			}
-		}
+		//}
 		LOG.debug("account was NOT created with user name: {}, password: {}, role: {}", 
 				account.username, account.password, account.role);
 		return false;
@@ -85,9 +86,10 @@ public AccountingServiceImpl(HashMap<String, Account> accounts, InMemoryUserDeta
 	@Override
 	public Boolean updateAccount(Account account) {		
 		if(accounts.containsKey(account.username)) {
+			account.password = encoder.encode(account.password);
 			accounts.put(account.username, account);
 			manager.updateUser(User.withUsername(account.username)
-					.password(encoder.encode(account.password)).roles(account.role).build());
+					.password(account.password).roles(account.role).build());
 			LOG.debug("account was updated with user name: {}, password: {}, role: {}", 
 					account.username, account.password, account.role);
 			return true;
@@ -100,7 +102,7 @@ public AccountingServiceImpl(HashMap<String, Account> accounts, InMemoryUserDeta
 	@Override
 	public Boolean isExist(String userName) {
 		LOG.debug("user with user name: {} exist:{}", userName, userName.equals(admin) ? true : accounts.containsKey(userName));
-		return userName.equals(admin) ? true : accounts.containsKey(userName);
+		return accounts.containsKey(userName);
 	}
 
 }

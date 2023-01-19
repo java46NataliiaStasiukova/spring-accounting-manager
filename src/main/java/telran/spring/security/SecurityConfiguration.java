@@ -15,7 +15,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfiguration {
-	@Value("${app.username.admin:admin@gmail.com}")
+	@Value("${app.username.admin:admin}")
 	String admin;
 	@Value("${app.password.admin:${ADMIN_PASSWORD}}")
 	String adminPassword;

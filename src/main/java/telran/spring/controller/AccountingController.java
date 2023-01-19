@@ -16,7 +16,7 @@ import telran.spring.service.AccountingServiceImpl;
 @RequestMapping("accounts")
 public class AccountingController {
 	static Logger LOG = LoggerFactory.getLogger(AccountingController.class);
-	@Value("${app.username.admin:admin@gmail.com}")
+	@Value("${app.username.admin:admin}")
 	String admin;
 	AccountingServiceImpl accounts;
 	PasswordEncoder encoder;
