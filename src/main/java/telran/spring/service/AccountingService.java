@@ -4,11 +4,11 @@ import telran.spring.dto.Account;
 
 public interface AccountingService{
 
-	Boolean addAccount(Account account);
+	boolean addAccount(Account account);
 	
-	Boolean deleteAccount(String userName);
+	boolean deleteAccount(String userName);
 	
-	Boolean updateAccount(Account account);
+	boolean updateAccount(Account account);
 	
-	Boolean isExist(String userName);
+	boolean isExist(String userName);
 }

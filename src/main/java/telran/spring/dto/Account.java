@@ -9,9 +9,9 @@ private static final long serialVersionUID = 1L;
 
 @Email @NotEmpty
 public String username;
-@Size(min = 6) @NotEmpty
+@Size(min = 6, message = "password must have length not les than 6") @NotEmpty
 public String password;
-@Pattern(regexp = "USER|ADMIN")
+@NotEmpty
 public String role;
 
 }
