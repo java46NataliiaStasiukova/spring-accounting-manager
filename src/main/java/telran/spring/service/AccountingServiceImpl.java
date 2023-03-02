@@ -1,43 +1,53 @@
 package telran.spring.service;
 
-import java.io.*;
-import java.nio.file.*;
-import java.util.*;
+import java.time.LocalDateTime;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.provisioning.UserDetailsManager;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
-import telran.spring.controller.AccountingController;
+import telran.spring.accounting.entities.AccountEntity;
+import telran.spring.accounting.repo.AccountRepository;
 import telran.spring.dto.Account;
 
 @Service
+@Transactional
 public class AccountingServiceImpl implements AccountingService {
 	private static Logger LOG = LoggerFactory.getLogger(AccountingService.class);
 	@Value("${app.admin.username:admin}")
 	private String admin;
+	@Value("${app.password.period:100}")
+	private int passwordPeriod;//period password existence in hours
 private PasswordEncoder passwordEncoder;
 private UserDetailsManager userDetailsManager;
-private HashMap<String, Account> accounts;
+private AccountRepository accounts;
 @Value("${app.file.name:accounts.data}")
 private String fileName;
+
+public AccountingServiceImpl(PasswordEncoder passwordEncoder, UserDetailsManager userDetailsManager,
+		AccountRepository accounts) {
+	this.passwordEncoder = passwordEncoder;
+	this.userDetailsManager = userDetailsManager;
+	this.accounts = accounts;
+}
 
 	@Override
 	public boolean addAccount(Account account) {
 		boolean res = false;
-		if(!account.username.equals(admin) && !accounts.containsKey(account.username)) {
+		if(!account.username.equals(admin) && !accounts.existsById(account.username)) {
 			res = true;
 			account.password = passwordEncoder.encode(account.password);
-			accounts.put(account.username, account);
+			AccountEntity accountDocument = AccountEntity.of(account);
+			accountDocument.setExperation(LocalDateTime.now().plusHours(passwordPeriod));
+			accounts.save(accountDocument);
 			userDetailsManager.createUser(User.withUsername(account.username)
-					.password(account.password).roles(account.role).build());
+					.password(account.password).roles(account.roles).build());
 		}
 		return res;
 	}
@@ -45,9 +55,9 @@ private String fileName;
 	@Override
 	public boolean deleteAccount(String username) {
 		boolean res = false;
-		if(accounts.containsKey(username)) {
+		if(accounts.existsById(username)) {
 			res = true;
-			accounts.remove(username);
+			accounts.deleteById(username);
 			userDetailsManager.deleteUser(username);
 		}
 		return res;
@@ -56,139 +66,39 @@ private String fileName;
 	@Override
 	public boolean updateAccount(Account account) {
 		boolean res = false;
-		if(accounts.containsKey(account.username)) {
-			res = true;
-			account.password = passwordEncoder.encode(account.password);
-			accounts.put(account.username, account);
-			userDetailsManager.updateUser(User.withUsername(account.username)
-					.password(account.password).roles(account.role).build());
+		AccountEntity accountDocument = accounts.findById(account.username).orElse(null);
+		if(accountDocument != null) {
+			if(!passwordEncoder.matches(account.password, accountDocument.getPassword())) {
+				res = true;
+				account.password = passwordEncoder.encode(account.password);
+				accountDocument.setPassword(account.password);
+				accountDocument.setRevoke(false);
+				accountDocument.setRoles(account.roles);
+				accountDocument.setExperation(LocalDateTime.now().plusHours(passwordPeriod));
+				accounts.save(accountDocument);
+				userDetailsManager.updateUser(User.withUsername(account.username)
+						.password(account.password).roles(account.roles).build());
+			}
 		}
 		return res;
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public boolean isExist(String username) {
-		return accounts.containsKey(username);
+		return accounts.existsById(username);
 	}
 
-	public AccountingServiceImpl(PasswordEncoder passwordEncoder, UserDetailsManager userDetailsManager) {
-		this.passwordEncoder = passwordEncoder;
-		this.userDetailsManager = userDetailsManager;
-	}
-	@PreDestroy
-	void saveAccounts() {
-		try(ObjectOutputStream output = new ObjectOutputStream(new FileOutputStream(fileName))){
-			output.writeObject(accounts);
-			LOG.debug("accounts saved to file {}", fileName);
-		} catch(Exception e) {
-			LOG.error("saving to file caused exception {}", e.getMessage());
-		}
-	}
 	@PostConstruct
 	void restoreAccounts() {
-		try(ObjectInputStream input = new ObjectInputStream(new FileInputStream(fileName))){
-			accounts = (HashMap<String, Account>) input.readObject();
-			for(Account acc: accounts.values()) {
-				userDetailsManager.createUser(User.withUsername(acc.username)
-						.password(acc.password).roles(acc.role).build());
+		//TODO
+		//finding only non-revoke and non-expired accounts
+			for(AccountEntity acc: accounts.findAll()) {//findAll -> to change
+				userDetailsManager.createUser(User.withUsername(acc.getEmail())
+						.password(acc.getPassword()).roles(acc.getRoles()).build());
 			}
-			LOG.debug("accounts {} has been restored", accounts.keySet());
-		}catch(FileNotFoundException e) {
-			LOG.warn("file {} doesn't exists", fileName);
-			accounts = new HashMap<>();
-		}catch (Exception e) {
-			LOG.error("error at restoring accounts {}", e.getMessage());
-		}
+			LOG.debug("accounts {} has been restored", accounts.count());//to change
+
 	}
 }
-//@Service
-//public class AccountingServiceImpl implements AccountingService {
-//HashMap<String, Account> accounts;
-//InMemoryUserDetailsManager manager;
-//PasswordEncoder encoder;
-//@Value("${app.filename.file:newFile}")
-//String fileName;
-//@Value("${app.username.admin:admin}")
-//String admin;
-//static Logger LOG = LoggerFactory.getLogger(AccountingController.class);
-//
-//public AccountingServiceImpl(HashMap<String, Account> accounts, InMemoryUserDetailsManager manager,
-//		PasswordEncoder encoder){
-//	this.accounts = accounts;
-//	this.manager = manager;
-//	this.encoder = encoder;
-//}
-//	@SuppressWarnings("unchecked")
-//	public void init() throws Exception{
-//		if(new File(fileName).exists()) {
-//			try (ObjectInputStream input = new ObjectInputStream(Files.newInputStream(Path.of(fileName)))) {
-//				accounts = (HashMap<String, Account>) input.readObject();
-//				accounts.entrySet().stream()
-//				.forEach(k -> {
-//					manager.createUser(User.withUsername(k.getValue().username)
-//							.password(encoder.encode(k.getValue().password)).roles(k.getValue().role).build());
-//				});
-//			}
-//			LOG.debug("accounts was restored from file: {}", fileName);
-//		} 
-//	}
-//	
-//	public void save() throws Exception{
-//		try(ObjectOutputStream output = new ObjectOutputStream(
-//				new FileOutputStream(fileName))){
-//			output.writeObject(accounts);
-//		}
-//		LOG.debug("accounts was saved to file: {}", fileName);
-//	}
-//	
-//	@Override
-//	public Boolean addAccount(Account account) {
-//		//if(!account.username.equals(admin)) {
-//			account.password = encoder.encode(account.password);
-//			if(accounts.putIfAbsent(account.username, account) == null) {
-//				manager.createUser(User.withUsername(account.username)
-//						.password(account.password).roles(account.role).build());
-//				LOG.debug("account was created with user name: {}, password: {}, role: {}", 
-//						account.username, account.password, account.role);
-//				return true;
-//			}
-//		//}
-//		LOG.debug("account was NOT created with user name: {}, password: {}, role: {}", 
-//				account.username, account.password, account.role);
-//		return false;
-//	}
-//
-//	@Override
-//	public Boolean deleteAccount(String userName) {
-//		if(accounts.remove(userName) != null) {
-//			manager.deleteUser(userName);
-//			LOG.debug("user with user name: {} was deleted", userName);
-//			return true;
-//		}
-//		LOG.debug("user with user name: {} was NOT deleted", userName);
-//		return false;
-//	}
-//
-//	@Override
-//	public Boolean updateAccount(Account account) {		
-//		if(accounts.containsKey(account.username)) {
-//			account.password = encoder.encode(account.password);
-//			accounts.put(account.username, account);
-//			manager.updateUser(User.withUsername(account.username)
-//					.password(account.password).roles(account.role).build());
-//			LOG.debug("account was updated with user name: {}, password: {}, role: {}", 
-//					account.username, account.password, account.role);
-//			return true;
-//		}
-//		LOG.debug("account was NOT updated with user name: {}, password: {}, role: {}", 
-//				account.username, account.password, account.role);
-//		return false;
-//	}
-//	
-//	@Override
-//	public Boolean isExist(String userName) {
-//		LOG.debug("user with user name: {} exist:{}", userName, userName.equals(admin) ? true : accounts.containsKey(userName));
-//		return accounts.containsKey(userName);
-//	}
-//
-//}
+
