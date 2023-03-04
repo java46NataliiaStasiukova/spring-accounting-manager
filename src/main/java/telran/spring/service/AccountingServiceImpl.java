@@ -1,6 +1,7 @@
 package telran.spring.service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +69,7 @@ public AccountingServiceImpl(PasswordEncoder passwordEncoder, UserDetailsManager
 		boolean res = false;
 		AccountEntity accountDocument = accounts.findById(account.username).orElse(null);
 		if(accountDocument != null) {
-			if(!passwordEncoder.matches(account.password, accountDocument.getPassword())) {
+			//if(!passwordEncoder.matches(account.password, accountDocument.getPassword())) {
 				res = true;
 				account.password = passwordEncoder.encode(account.password);
 				accountDocument.setPassword(account.password);
@@ -78,7 +79,7 @@ public AccountingServiceImpl(PasswordEncoder passwordEncoder, UserDetailsManager
 				accounts.save(accountDocument);
 				userDetailsManager.updateUser(User.withUsername(account.username)
 						.password(account.password).roles(account.roles).build());
-			}
+			//}
 		}
 		return res;
 	}
@@ -90,15 +91,15 @@ public AccountingServiceImpl(PasswordEncoder passwordEncoder, UserDetailsManager
 	}
 
 	@PostConstruct
-	void restoreAccounts() {
-		//TODO
-		//finding only non-revoke and non-expired accounts
-			for(AccountEntity acc: accounts.findAll()) {//findAll -> to change
+	void detailsManagerPopulation() {
+		List<AccountEntity> notExpiredAccounts = accounts.findByExperationAfter(LocalDateTime.now().toString());
+		for(AccountEntity acc: notExpiredAccounts) {
+			if(!acc.isRevoke()) {
 				userDetailsManager.createUser(User.withUsername(acc.getEmail())
 						.password(acc.getPassword()).roles(acc.getRoles()).build());
 			}
-			LOG.debug("accounts {} has been restored", accounts.count());//to change
-
+		}
+		LOG.debug("accounts {} has been restored", notExpiredAccounts.size());
 	}
 }
 

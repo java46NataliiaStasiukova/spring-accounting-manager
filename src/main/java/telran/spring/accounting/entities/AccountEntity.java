@@ -1,6 +1,7 @@
 package telran.spring.accounting.entities;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -11,7 +12,8 @@ import telran.spring.dto.Account;
 public class AccountEntity {
 
 	@Id
-	private String email;
+	private String id;
+	private String username;
 	String password;
 	LocalDateTime experation;
 	boolean revoke;
@@ -20,10 +22,15 @@ public class AccountEntity {
 	public static AccountEntity of(Account accountDto) {
 		AccountEntity account = new AccountEntity();
 		account.password = accountDto.password;
-		account.email = accountDto.username;
+		account.username = accountDto.username;
 		account.revoke = false;
 		account.roles = accountDto.roles;
+		account.id = accountDto.username;
 		return account;
+	}
+	
+	public String getId() {
+		return id;
 	}
 
 	public String getPassword() {
@@ -51,7 +58,7 @@ public class AccountEntity {
 	}
 
 	public String getEmail() {
-		return email;
+		return username;
 	}
 	
 	public String[] getRoles() {
@@ -60,5 +67,11 @@ public class AccountEntity {
 
 	public void setRoles(String[] roles) {
 		this.roles = roles;
+	}
+
+	@Override
+	public String toString() {
+		return "AccountEntity [email=" + username + ", password=" + password + ", experation=" + experation + ", revoke="
+				+ revoke + ", roles=" + Arrays.toString(roles) + "]";
 	}
 }
