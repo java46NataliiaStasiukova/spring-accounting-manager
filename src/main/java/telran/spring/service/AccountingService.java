@@ -1,5 +1,7 @@
 package telran.spring.service;
 
+import java.util.*;
+
 import telran.spring.dto.Account;
 
 public interface AccountingService{
@@ -11,4 +13,10 @@ public interface AccountingService{
 	boolean updateAccount(Account account);
 	
 	boolean isExist(String userName);
+	
+	List<String> getAccountsRole(String role);
+	
+	List<String> getActiveAccounts();
+	
+	long getMaxRoles();
 }

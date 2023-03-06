@@ -1,5 +1,7 @@
 package telran.spring.controller;
 
+import java.util.List;
+
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -51,6 +53,18 @@ public class AccountingController {
 		}
 		return res;
 	}
+	@GetMapping
+	List<String> getAccountsByRole(@RequestParam (name = "role",
+	defaultValue = "")String role){
+		return role.isEmpty() ? accountingService.getActiveAccounts() 
+				: accountingService.getAccountsRole(role);
+	}
+	@GetMapping("roles/max")
+	long getMaxRoles() {
+		return accountingService.getMaxRoles();
+	}
+
+	
 
 }
 

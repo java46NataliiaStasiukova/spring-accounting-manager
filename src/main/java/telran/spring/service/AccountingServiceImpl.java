@@ -1,6 +1,7 @@
 package telran.spring.service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -87,11 +88,13 @@ public AccountingServiceImpl(PasswordEncoder passwordEncoder, UserDetailsManager
 	@Override
 	@Transactional(readOnly = true)
 	public boolean isExist(String username) {
-		return accounts.existsById(username);
+		return userDetailsManager.userExists(username);
 	}
 
 	@PostConstruct
+	@Transactional(readOnly = true)
 	void detailsManagerPopulation() {
+		//TO FIX
 		List<AccountEntity> notExpiredAccounts = accounts.findByExperationAfter(LocalDateTime.now().toString());
 		for(AccountEntity acc: notExpiredAccounts) {
 			if(!acc.isRevoke()) {
@@ -100,6 +103,28 @@ public AccountingServiceImpl(PasswordEncoder passwordEncoder, UserDetailsManager
 			}
 		}
 		LOG.debug("accounts {} has been restored", notExpiredAccounts.size());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<String> getAccountsRole(String role) {
+		List<AccountEntity> accountsDB = accounts.findByRole(role);
+		LOG.debug("passwords: {}", accountsDB.stream().map(AccountEntity::getPassword).toList());
+		return accountsDB.stream().map(AccountEntity::getEmail).toList();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<String> getActiveAccounts() {
+		List<AccountEntity> accountsDB = accounts.findByExpirationGreaterThanAndRevokedIsFalse(LocalDateTime.now(ZoneId.of("UTC")));
+		return accountsDB.stream().map(AccountEntity::getEmail).toList();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public long getMaxRoles() {
+		
+		return accounts.getMaxRoles();
 	}
 }
 
