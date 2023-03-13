@@ -133,6 +133,7 @@ public class AccountingServiceImpl implements AccountingService {
 		return accounts.getMaxRoles();
 	}
 
+	//TODO
 	@Override
 	public List<String> getAllAccountsWithMaxRoles() {
 		// TODO Auto-generated method stub
@@ -142,7 +143,7 @@ public class AccountingServiceImpl implements AccountingService {
 	@Override
 	public int getMaxRolesOccurrenceCount() {
 		// TODO Auto-generated method stub
-		return 0;
+		return accounts.getAccountsCount();
 	}
 
 	@Override

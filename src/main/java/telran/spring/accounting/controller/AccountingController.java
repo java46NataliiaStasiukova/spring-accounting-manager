@@ -61,4 +61,13 @@ public class AccountingController {
 	long getMaxRoles() {
 		return accountingService.getMaxRoles();
 	}
+//	@GetMapping("roles/maxRoles")
+//	List<String> getAccountsWithMaxRoles(){
+//		return accountingService.getAllAccountsWithMaxRoles();
+//	}
+	
+	@GetMapping("roles/count")
+	int getMaxRolesCount() {
+		return accountingService.getMaxRolesOccurrenceCount();
+	}
 }
